@@ -16,4 +16,4 @@ Usage:<br/>
 		<br/>
 		-search [-i](optional) <input_file> <text_to_search> <br/>
 		Example: ITailPlus.exe -search -i big_file.log error<br/>
-		ITailPlus will read the file in blocks<br/>
+		ITailPlus will read the file in blocks until found the error word<br/>
