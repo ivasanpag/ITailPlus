@@ -1,0 +1,46 @@
+.sdf
+.sln
+.suo
+Debug
+Release
+x64
+.vs
+ITailPlus.vcxproj.opensdf
+ITailPlus.vcxproj.exp
+ITailPlus.vcxproj.lib
+ITailPlus.vcxproj.vcxproj.user
+.aps
+.zip
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
