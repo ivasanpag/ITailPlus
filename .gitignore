@@ -1,15 +1,15 @@
 .sdf
-.sln
+*.sln
 .suo
-Debug
+Debug/*
 Release
 x64
-.vs
-ITailPlus\ITailPlus.vcxproj.opensdf
-ITailPlus\ITailPlus.vcxproj.exp
-ITailPlus\ITailPlus.vcxproj.lib
-ITailPlus\ITailPlus.vcxproj.vcxproj.user
-ITailPlus\Debug
+.vs/*
+ITailPlus/ITailPlus.vcxproj.opensdf
+ITailPlus/ITailPlus.vcxproj.exp
+ITailPlus/ITailPlus.vcxproj.lib
+ITailPlus/ITailPlus.vcxproj.user
+ITailPlus/Debug
 .aps
 .zip
 
