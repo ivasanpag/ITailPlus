@@ -222,6 +222,7 @@ int  copyIntoFilesByNumLines(int argc, char **argv) {
 	{
 		
 		output.write(line.c_str(), line.length());
+		output.write("\n", strlen("\n"));
 		nLine++;
 
 		if (nLine >= maxLines) {
