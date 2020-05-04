@@ -5,6 +5,9 @@
 #include <fstream>
 #include <string>
 #include <boost/lexical_cast.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
+using namespace boost::posix_time;
+
 
 #define MAX_SIZE_BLOCK (2048*5)
 
@@ -16,6 +19,7 @@ void printUsage();
 
 int main(int argc, char **argv)
 {
+	ptime t_begin(microsec_clock::local_time());
 
 	if (argc > 5 || argc < 2) {
 		printUsage();
@@ -24,12 +28,21 @@ int main(int argc, char **argv)
 
 	if (strcmp(argv[1], "-size") == 0) {
 		std::cout << "Filtering by size..." << std::endl;
-		return copyIntoFilesBySize(argc, argv);
+		int rt = copyIntoFilesBySize(argc, argv);
+
+		time_duration diff = microsec_clock::local_time() - t_begin;
+		std::cout << "Finish in  " << diff.total_milliseconds() << " ms" << std::endl;
+
+		return rt;
 	}
 	
 	if (strcmp(argv[1], "-lines") == 0) {
 		std::cout << "Filtering by lines..." << std::endl;
-		return copyIntoFilesByNumLines(argc, argv);
+		int rt = copyIntoFilesByNumLines(argc, argv);
+
+		time_duration diff = microsec_clock::local_time() - t_begin;
+		std::cout << "Finish in  " << diff.total_milliseconds() << " ms" << std::endl;
+		return rt;
 	}
 
 	if (strcmp(argv[1], "-block") == 0) {
