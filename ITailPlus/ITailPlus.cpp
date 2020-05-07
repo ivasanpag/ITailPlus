@@ -1,15 +1,17 @@
 // ITailPlus.cpp : Este archivo contiene la función "main". La ejecución del programa comienza y termina ahí.
 //
-
+#include <windows.h>  
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <boost/lexical_cast.hpp>
-#include "boost/date_time/posix_time/posix_time.hpp"
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/algorithm/string.hpp>
 using namespace boost::posix_time;
 
 
 #define MAX_SIZE_BLOCK (2048*5)
+#define MAX_LINES		20
 
 int copyIntoFilesBySize(int argc, char **argv);
 int copyIntoFilesByNumLines(int argc, char **argv);
@@ -67,8 +69,7 @@ int main(int argc, char **argv)
 
 int searchInFile(int argc, char **argv, bool ignoreCase) {
 	std::ifstream input;
-	char buffer[2048]; // Buffer de 2 Kbytes
-	int bytesRead;
+	std::string bufferCopy; 
 	std::string textToSearch;
 
 	if (ignoreCase) {
@@ -79,6 +80,7 @@ int searchInFile(int argc, char **argv, bool ignoreCase) {
 			return 1;
 		}
 		textToSearch = std::string(argv[4]);
+		boost::algorithm::to_lower(textToSearch);
 	}
 	else {
 		input.open(argv[2]);
@@ -89,15 +91,101 @@ int searchInFile(int argc, char **argv, bool ignoreCase) {
 		textToSearch = std::string(argv[3]);
 	}
 	
-	int size = 0;
+	int nLine = 0;
 
 	std::string file;
+	std::string line;
 	bool showMore = false;
-	do {
-		input.read(buffer, 2048);
-		bytesRead = input.gcount();
+	while (std::getline(input, line))
+	{
+		nLine++;
+
+		if (ignoreCase) {
+			bufferCopy = boost::algorithm::to_lower_copy(line);
+		}
+		else {
+			bufferCopy = line;
+		}
 
 		if (showMore) {
+			if (bufferCopy.find(textToSearch) != std::string::npos) {
+				#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED); // Red
+				#endif
+			}
+			std::cout << line << std::endl;
+
+			#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); // White
+			#endif
+			nLine++;
+
+			if (nLine >= MAX_LINES) {
+				std::cout << "\nPress 'c' to show the next block or 'n' to search another ocurrence..." << std::endl;
+				
+				std::string letter;
+				std::cin >> letter;
+
+				if (letter[0] == 'n') {
+					showMore = false;
+					std::cout << std::string('\n', 2);
+				}
+				else {
+					if (letter[0] == 'c') {
+						showMore = true;
+						nLine = 0;
+					}
+					else {
+						break;
+					}
+				}
+
+				
+
+			}
+		}
+
+
+		if (!showMore && bufferCopy.find(textToSearch) != std::string::npos) {
+			#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED); // Red
+			#endif
+
+			std::cout << line << std::endl;
+			#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); // White
+			#endif
+
+			std::cout << "\nPress 'c' to show the next block or 'n' to search another ocurrence..." << std::endl;
+			std::string letter;
+			std::cin >> letter;
+
+			if (letter[0] == 'n') {
+				showMore = false;
+				std::cout << std::string('\n', 2);
+			} else {
+				if (letter[0] == 'c') {
+					showMore = true;
+					nLine = 0;
+				} else {
+					break;
+				}
+			}
+			
+			
+
+		}
+	}
+
+	/*
+	do {
+		memset(buffer, 0, 2048 * sizeof(char));
+		input.read(buffer, 2048);
+		bytesRead = input.gcount();
+		
+
+		if (showMore) {
+
 			printf("%s", buffer);
 			size++;
 			
@@ -106,6 +194,7 @@ int searchInFile(int argc, char **argv, bool ignoreCase) {
 				char letter = std::cin.get();
 				if (letter == 'n') {
 					showMore = false;
+					std::cout << std::string(20, '\n');
 					continue;
 				}
 				if (letter == '\n') {
@@ -120,13 +209,19 @@ int searchInFile(int argc, char **argv, bool ignoreCase) {
 			
 		}
 
-		if (!showMore && std::string(buffer).find(textToSearch) != std::string::npos) {
-
+		if (!showMore && bufferCopy.find(textToSearch) != std::string::npos) {
+			#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED);
+			#endif
 			printf("%s", buffer);
+			#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); // White
+			#endif
 			std::cout << "\nPress Enter to show the next block or 'n' to search another ocurrence..." << std::endl;
 			char letter = std::cin.get();
 			if (letter == 'n') {
 				showMore = false;
+				std::cout << std::string(20, '\n');
 				continue;
 			}
 			if (letter == '\n') {
@@ -142,7 +237,7 @@ int searchInFile(int argc, char **argv, bool ignoreCase) {
 	
 
 	} while (bytesRead > 0);
-
+	*/
 
 	input.close();
 
@@ -153,7 +248,7 @@ int readFileInBlock(int argc, char **argv) {
 	std::ifstream input;
 	std::string nextblock("c");
 
-	char buffer[2048]; // Buffer de 2 Kbytes
+	char buffer[2048]; // Buffer de 2 Kbytes+
 	int bytesRead;
 
 
@@ -167,6 +262,7 @@ int readFileInBlock(int argc, char **argv) {
 	
 	std::string file;
 	do {
+		memset(buffer, 0, 2048 * sizeof(char));
 		input.read(buffer, 2048);
 		bytesRead = input.gcount();
 		
@@ -268,6 +364,7 @@ int copyIntoFilesBySize(int argc, char **argv) {
 
 	std::cout << "Output: " << output_file << std::endl;
 	char buffer[2048]; // Buffer de 2 Kbytes
+	memset(buffer, 0, 2048);
 	int bytesRead;
 	double maxSizeInMB = 0;
 
@@ -301,6 +398,7 @@ int copyIntoFilesBySize(int argc, char **argv) {
 	int cont = 1;
 	std::string file;
 	do {
+		memset(buffer, 0, 2048 * sizeof(char));
 		input.read(buffer, 2048);
 		bytesRead = input.gcount();
 		output.write(buffer, bytesRead);
