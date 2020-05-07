@@ -7,16 +7,23 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/algorithm/string.hpp>
+#include "boost/filesystem.hpp"
+#include <limits>
+#include <thread>
+
 using namespace boost::posix_time;
 
 
 #define MAX_SIZE_BLOCK (2048*5)
 #define MAX_LINES		20
+#define SIZE_TO_CREATE_THREADS		500000000
 
 int copyIntoFilesBySize(int argc, char **argv);
 int copyIntoFilesByNumLines(int argc, char **argv);
 int readFileInBlock(int argc, char **argv);
 int searchInFile(int argc, char **argv, bool ignoreCase);
+int searchInDirectory(int argc, char** argv);
+void createThreadsToRead(double begin, double end, std::string* file, std::string* textToSearch, int *cont);
 void printUsage();
 
 int main(int argc, char **argv)
@@ -61,6 +68,15 @@ int main(int argc, char **argv)
 		}
 		return searchInFile(argc, argv, ignoreCase);
 	}
+
+	if (strcmp(argv[1], "-search_dir") == 0) {
+
+		int rt = searchInDirectory(argc, argv);
+		time_duration diff = microsec_clock::local_time() - t_begin;
+		std::cout << "Finish in  " << diff.total_milliseconds() << " ms" << std::endl;
+		return rt;
+	}
+	
 
 	printUsage();
 	return 1;
@@ -176,68 +192,6 @@ int searchInFile(int argc, char **argv, bool ignoreCase) {
 
 		}
 	}
-
-	/*
-	do {
-		memset(buffer, 0, 2048 * sizeof(char));
-		input.read(buffer, 2048);
-		bytesRead = input.gcount();
-		
-
-		if (showMore) {
-
-			printf("%s", buffer);
-			size++;
-			
-			if ((size * 2048) >= MAX_SIZE_BLOCK) {
-				std::cout << "\nPress Enter to show the next block or 'n' to search another ocurrence..." << std::endl;
-				char letter = std::cin.get();
-				if (letter == 'n') {
-					showMore = false;
-					std::cout << std::string(20, '\n');
-					continue;
-				}
-				if (letter == '\n') {
-					showMore = true;
-					size = 0;
-				}
-				else {
-					break;
-				}
-
-			}
-			
-		}
-
-		if (!showMore && bufferCopy.find(textToSearch) != std::string::npos) {
-			#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED);
-			#endif
-			printf("%s", buffer);
-			#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); // White
-			#endif
-			std::cout << "\nPress Enter to show the next block or 'n' to search another ocurrence..." << std::endl;
-			char letter = std::cin.get();
-			if (letter == 'n') {
-				showMore = false;
-				std::cout << std::string(20, '\n');
-				continue;
-			}
-			if (letter == '\n') {
-				showMore = true;
-				size = 0;
-			}
-			else {
-				break;
-			}
-
-		}
-		
-	
-
-	} while (bytesRead > 0);
-	*/
 
 	input.close();
 
@@ -434,6 +388,139 @@ int copyIntoFilesBySize(int argc, char **argv) {
 	return 0;
 }
 
+int searchInDirectory(int argc, char** argv) {
+	boost::filesystem::path p = argv[2];
+	std::string textToSearch(argv[3]);
+
+	int cont = 0;
+	std::string bufferCopy;
+	std::ifstream input;
+	
+	std::cout << "Reading files... it could take several seconds..." << std::endl;
+	for (auto& path : boost::filesystem::directory_iterator(p)) { 
+		cont = 0;
+		if (!boost::filesystem::is_regular_file(path)) {
+			continue;
+		}
+
+		std::string file = boost::filesystem::canonical(path).string();
+		
+		input.open(file);
+		if (!input.good()) {
+			std::cout << "File " << file << " does not exist or cannot be opened" << std::endl;
+			input.close();				
+			continue;
+		}
+		
+		std::ifstream fileF;
+		std::string name = boost::filesystem::canonical(path).string();
+		fileF.open(name, std::ios::in | std::ios::binary);
+		
+		std::streamsize length = 1;
+		if (fileF.is_open())
+		{
+			#undef max
+			fileF.ignore(std::numeric_limits<std::streamsize>::max());
+			length = fileF.gcount();
+			fileF.clear();   //  Since ignore will have set eof.
+			fileF.seekg(0, std::ios_base::beg);
+			fileF.close();
+
+		}
+
+		if (length > SIZE_TO_CREATE_THREADS) {
+			// 4 threads
+			double count = length / 4;
+			double offset_begin[4] = {0, count, count*2, count*3};
+			double offset_end[4] = { count-1, (count*2)-1, (count*3)-1, length};
+			int countOccurrences[4] = { 0, 0, 0, 0 };
+			
+			
+			std::thread t1(createThreadsToRead, offset_begin[0], offset_end[0], &file, &textToSearch, &countOccurrences[0]);
+			std::thread t2(createThreadsToRead, offset_begin[1], offset_end[1], &file, &textToSearch, &countOccurrences[1]);
+			std::thread t3(createThreadsToRead, offset_begin[2], offset_end[2], &file, &textToSearch, &countOccurrences[2]);
+			std::thread t4(createThreadsToRead, offset_begin[3], offset_end[3], &file, &textToSearch, &countOccurrences[3]);
+
+			t1.join();
+			t2.join();
+			t3.join();
+			t4.join();
+
+			cont = countOccurrences[0] + countOccurrences[1] + countOccurrences[2] + countOccurrences[3];
+			
+		}
+		else {
+			std::string line;
+			while (std::getline(input, line))
+			{
+
+				if (line.find(textToSearch) != std::string::npos) {
+					cont++;
+				}
+
+			}
+		}
+
+		std::cout << "Found " << cont << " ocurrences in file " << file << std::endl;
+		input.close();
+	}
+
+	return 0;
+}
+
+void createThreadsToRead(double begin, double end, std::string* file, std::string *textToSearch, int* contTotal) {
+
+	char buffer[2048]; // Buffer de 2 Kbytes+
+	int bytesRead;
+	double totalBytesRead = 0;
+
+	std::ifstream input;
+
+	double totalBytesToRead = end - begin;
+
+	input.open(*file);
+	if (!input.good()) {
+		std::cout << "File " << *file << " does not exist or cannot be opened" << std::endl;
+		return;
+	}
+	
+	std::string bufferCopy;
+	int cont = 0;
+	
+	int len = 2048;
+	do {
+		if (input.tellg() >= end) {
+			break;
+		}
+
+		if (totalBytesToRead - totalBytesRead <= 2048) {
+			len = totalBytesToRead - totalBytesRead;
+		}
+
+		input.seekg(begin + totalBytesRead);
+
+		memset(buffer, 0, len);
+
+		(input).read(buffer, len);
+		bytesRead = (input).gcount();
+		totalBytesRead += bytesRead;
+
+		bufferCopy = buffer;
+		
+		if (bufferCopy.find(*textToSearch) != std::string::npos) {
+			cont++;
+		}
+		
+		if (totalBytesRead >= totalBytesToRead) {
+			break;
+		}
+
+	} while (bytesRead > 0);
+	
+
+	input.close();
+	*contTotal = cont;
+}
 
 void printUsage() {
 	printf("Usage:\n"
@@ -451,5 +538,9 @@ void printUsage() {
 		"\n"
 		"-search [-i](optional) <input_file> <text_to_search> \n"
 		"Example: ITailPlus.exe -search -i big_file.log error\n"
-		"ITailPlus will read the file in blocks\n");
+		"ITailPlus will read the file in blocks\n"
+		"\n"
+		"-search_dir <directory> <text_to_search> \n"
+		"Example: ITailPlus.exe -search_dir -i myfolder error\n"
+		"ITailPlus will show you the ocurrences of the text for each file inside the directory chosen\n");
 }
