@@ -478,7 +478,6 @@ int searchInDirectory(int argc, char** argv) {
 		if (option == "block") {
 			if (length > SIZE_TO_CREATE_THREADS) {
 				// We will divide the file in four chunks. In this way we avoid problems with threads writing in the same file
-				std::cout << "This file will generate 4 output files because of its size";
 				sendOutputToFileMT(&length, &file, &textToSearch, false);
 			}
 			else {
@@ -489,8 +488,7 @@ int searchInDirectory(int argc, char** argv) {
 		}
 		else {
 			if (length > SIZE_TO_CREATE_THREADS) {
-				// We will divide the file in four chunks. In this way we avoid problems with threads writing in the same file
-				std::cout << "This file will generate 4 output files because of its size" << std::endl;
+				// We will divide the file in several chunks. In this way we avoid problems with threads writing in the same file
 				sendOutputToFileMT(&length, &file, &textToSearch, true);
 			}
 			else {
@@ -560,17 +558,42 @@ int createThreadsToRead(double begin, double end, std::string* file, std::string
 }
 
 void sendOutputToFileMT(uintmax_t* length, std::string* file, std::string* textToSearch, bool inLines) {
-	// 4 threads
-	double count = *length / 4;
-	double offset_begin[4] = { 0, count, count * 2, count * 3 };
-	double offset_end[4] = { count - 1, (count * 2) - 1, (count * 3) - 1, *length };
+	
+	unsigned int processor_count = std::thread::hardware_concurrency();
+	if (processor_count <= 0)
+		processor_count = 4;
 
+	std::cout << "This file will generate " << processor_count << " output files because of its size" << std::endl;
+	double count = *length / processor_count;
+	std::vector<std::future<int>> futures;
+	int j = 1;
+	for (int i = 0; i < processor_count; i++)
+	{
+		double offset_begin = count * i;
+		double offset_end = (count * j) - 1;
+		futures.push_back(std::async(createThreadsToWrite, offset_begin, offset_end, file, textToSearch, inLines, i));
+		j++;
+	}
+	int cont = 0;
+	for (auto it = futures.begin(); it != futures.end(); it++)
+		cont += (*it).get();
+	
+	
+	/*
+
+
+	// double offset_begin[] = { 0, count, count * 2, count * 3 };
+	// double offset_end[4] = { count - 1, (count * 2) - 1, (count * 3) - 1, *length };
+	
+	
 	std::future<int> fut1 = std::async(createThreadsToWrite, offset_begin[0], offset_end[0], file, textToSearch, inLines, 0);
 	std::future<int> fut2 = std::async(createThreadsToWrite, offset_begin[1], offset_end[1], file, textToSearch, inLines, 1);
 	std::future<int> fut3 = std::async(createThreadsToWrite, offset_begin[2], offset_end[2], file, textToSearch, inLines, 2);
 	std::future<int> fut4 = std::async(createThreadsToWrite, offset_begin[3], offset_end[3], file, textToSearch, inLines, 3);
-
 	int cont = fut1.get() + fut2.get() + fut3.get() + fut4.get();
+	*/
+
+	
 }
 
 
