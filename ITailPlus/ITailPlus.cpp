@@ -462,7 +462,7 @@ int searchInDirectory(int argc, char** argv) {
 			continue;
 		}
 
-		std::cout << "Can you write these occurrences in a file? (y/N)";
+		std::cout << "Do you want to write these occurrences in a file? (y/N)";
 		std::string letter;
 		std::cin >> letter;
 
@@ -471,7 +471,7 @@ int searchInDirectory(int argc, char** argv) {
 		}
 		
 
-		std::cout << "Can you send the output in blocks or only the affected lines? (block (default) / line)";
+		std::cout << "Do you want to send the output in blocks or only the affected lines? (block (recommend) / line)";
 		std::string option;
 		std::cin >> option;
 
