@@ -17,3 +17,7 @@ Usage:<br/>
 		-search [-i](optional) <input_file> <text_to_search> <br/>
 		Example: ITailPlus.exe -search -i big_file.log error<br/>
 		ITailPlus will read the file in blocks until found the error word<br/>
+		<br/>
+		-search_dir <directory> <text_to_search> <br/>
+		Example: ITailPlus.exe -search-dir C:\myFolder "Special text"<br/>
+		ITailPlus will read each file inside the directory and count you the occurrences of your searched text<br/>
